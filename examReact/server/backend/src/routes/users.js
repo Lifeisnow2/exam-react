@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const authenticate = require('../middleware/authenticate'); // Подключаем middleware аутентификации
-require('dotenv').config(); // Подключаем .env файл
+require('dotenv').config();
 
 // Создаем пул подключения к базе данных
 const dbPool = mysql

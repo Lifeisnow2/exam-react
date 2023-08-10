@@ -1,13 +1,25 @@
-import { routes } from './routes';
-import { ThemeProvider } from '@mui/system';
-import { RouterProvider } from 'react-router-dom';
-import { theme } from '../server/backend/src/themes';
+import React, { useState } from 'react';
+
+import UserListPage from './pages/user-list-page/UserListPage';
+import LoginPage from './pages/login-org-page/LoginOrgPage';
 
 const App = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   return (
-    <ThemeProvider theme={theme}>
-      <RouterProvider router={routes} />;
-    </ThemeProvider>
+    // <Router>
+    //   <Switch>
+    //     <Route path='/login' component={LoginPage} />
+    //     {}
+    //     <ProtectedRoute
+    //       path='/users'
+    //       component={UserListPage}
+    //       isAuthenticated={isAuthenticated}
+    //     />
+    //     <Redirect to='/login' /> {}
+    //   </Switch>
+    // </Router>
+    <UserListPage />
   );
 };
 
