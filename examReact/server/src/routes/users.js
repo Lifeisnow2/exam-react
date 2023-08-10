@@ -1,22 +1,37 @@
 const express = require('express');
-const mysql = require('mysql2'); // Используем правильное название библиотеки
-
 const router = express.Router();
+const mysql = require('mysql2');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const Joi = require('joi');
+const authenticate = require('../middleware/authenticate'); // Подключаем middleware аутентификации
+require('dotenv').config(); // Подключаем .env файл
 
-const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'finally',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+// Создаем пул подключения к базе данных
+const dbPool = mysql
+  .createPool({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'finally',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+  })
+  .promise();
+
+// Validation users data
+const userSchema = Joi.object({
+  name: Joi.string().trim().required(),
+  email: Joi.string().email().trim().lowercase().required(),
+  password: Joi.string().required(),
+  age: Joi.number().integer(),
 });
 
-router.get('/', async (req, res) => {
+// Получение списка пользователей (требуется аутентификация)
+router.get('/', authenticate, async (req, res) => {
   try {
-    const query = 'SELECT * FROM users';
-    const [rows] = await pool.query(query);
+    const [rows] = await dbPool.query('SELECT * FROM users');
     res.json(rows);
   } catch (error) {
     console.error(error);
@@ -24,40 +39,41 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Создание нового пользователя (доступно всем)
 router.post('/', async (req, res) => {
   try {
-    const { name, email, age } = req.body;
-    const query = 'INSERT INTO users (name, email, age) VALUES (?, ?, ?)';
-    await pool.query(query, [name, email, age]);
-    res.status(201).send('User created successfully');
+    // Validation  users data
+    const validatedUser = await userSchema.validateAsync(req.body);
+
+    // Хешируем пароль
+    const hashedPassword = await bcrypt.hash(validatedUser.password, 10);
+
+    // Добавление пользователя в базу данных
+    const [response] = await dbPool.execute(
+      'INSERT INTO users (name, email, password, age) VALUES (?, ?, ?, ?)',
+      [
+        validatedUser.name,
+        validatedUser.email,
+        hashedPassword,
+        validatedUser.age,
+      ]
+    );
+
+    //  токен
+    const token = jwt.sign(
+      {
+        id: response.insertId,
+        name: validatedUser.name,
+        email: validatedUser.email,
+      },
+      process.env.JWT_SECRET
+    );
+
+    // Отправить токен в ответе
+    res.status(201).json({ token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'An error occurred while creating user' });
-  }
-});
-
-router.put('/:id', async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const { name, email, age } = req.body;
-    const query = 'UPDATE users SET name = ?, email = ?, age = ? WHERE id = ?';
-    await pool.query(query, [name, email, age, userId]);
-    res.send('User updated successfully');
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating user' });
-  }
-});
-
-router.delete('/:id', async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const query = 'DELETE FROM users WHERE id = ?';
-    await pool.query(query, [userId]);
-    res.send('User deleted successfully');
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while deleting user' });
   }
 });
 
