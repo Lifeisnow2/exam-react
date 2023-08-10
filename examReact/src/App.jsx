@@ -1,7 +1,7 @@
 import { routes } from './routes';
 import { ThemeProvider } from '@mui/system';
 import { RouterProvider } from 'react-router-dom';
-import { theme } from '../server/src/themes';
+import { theme } from '../server/backend/src/themes';
 
 const App = () => {
   return (
